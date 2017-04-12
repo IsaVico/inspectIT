@@ -3,16 +3,19 @@ package rocks.inspectit.server.diagnosis.service.rules.impl;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
 import org.mockito.InjectMocks;
-import org.testng.annotations.BeforeTest;
+import org.mockito.Mock;
 import org.testng.annotations.Test;
 
 import rocks.inspectit.shared.all.communication.data.AggregatedInvocationSequenceData;
@@ -24,14 +27,19 @@ import rocks.inspectit.shared.all.testbase.TestBase;
 /**
  * @author Isabel Vico Peinado
  */
+@SuppressWarnings("PMD")
 public class TimeWastingOperationsRuleTest extends TestBase {
 
 	@InjectMocks
 	TimeWastingOperationsRule timeWastingOperationsRule;
 
-	List<AggregatedInvocationSequenceData> timeWastingOperations;
+	@Mock
+	InvocationSequenceData globalContext;
 
+	List<AggregatedInvocationSequenceData> timeWastingOperationsResults;
 	private static final Random RANDOM = new Random();
+	private static final Double DURATION = RANDOM.nextDouble() + 1000;
+	private static final Timestamp DATE = new Timestamp(new Date().getTime());
 
 	/**
 	 * Checks that the sequenceData have all the mandatory attributes.
@@ -51,37 +59,17 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		}
 	}
 
-	@BeforeTest
-	private void init() {
-		if (timeWastingOperationsRule == null) {
-			timeWastingOperationsRule = new TimeWastingOperationsRule();
-		}
-		timeWastingOperationsRule.baseline = new Double(1000L);
-	}
-
-	public static class ActionTimerData extends TimeWastingOperationsRuleTest {
-
+	public class ActionTimerData extends TimeWastingOperationsRuleTest {
 		/**
-		 * Initializes global context with the proper data.
+		 * Populates the nested sequences.
 		 *
-		 * @return An instance of invocation data sequence with fake data.
+		 * @return A list of invocation data which contains the nested sequences
 		 */
-		void initializeGlobalContext(double duration) {
-			initializeGlobalContext();
-			timeWastingOperationsRule.globalContext.setDuration(duration);
-		}
-
-		/**
-		 * Initializes the globalContext with timer Data
-		 *
-		 * @return The invocation data which contains the global context
-		 */
-		void initializeGlobalContext() {
-			timeWastingOperationsRule.globalContext = new InvocationSequenceData();
-			timeWastingOperationsRule.globalContext.setMethodIdent(1L);
-			timeWastingOperationsRule.globalContext.setDuration(RANDOM.nextDouble() + 1000);
-
-			initializeNestedSequences();
+		private List<InvocationSequenceData> populateNestedSequences() {
+			List<InvocationSequenceData> nestedSequences = new ArrayList<>();
+			nestedSequences.add(generateSequence(1, RANDOM.nextDouble()));
+			nestedSequences.add(generateSequence(2, -1));
+			return nestedSequences;
 		}
 
 		/**
@@ -89,7 +77,6 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 *
 		 * @return The initialized timer data.
 		 */
-		@SuppressWarnings("PMD.AvoidPrintStackTrace")
 		TimerData initializeTimerData(double exclusiveMin) {
 			Class<?> timerDataClass = null;
 			TimerData timerData = new TimerData(new Timestamp(System.currentTimeMillis()), 10L, 20L, 30L);
@@ -108,42 +95,49 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		}
 
 		/**
-		 * Initializes the nested sequences.
-		 *
-		 * @return A list of invocation data which contains the nested sequences
-		 */
-		void initializeNestedSequences() {
-			timeWastingOperationsRule.globalContext.getNestedSequences().add(generateSequence(1, RANDOM.nextDouble()));
-			timeWastingOperationsRule.globalContext.getNestedSequences().add(generateSequence(2, -1));
-		}
-
-		/**
 		 * Generates a sequence with timer data. And initializing it if necessary.
 		 *
 		 * @param id
 		 *            If of the sequence in order to give different sequences
-		 * @param offset
 		 * @param exclusiveMin
-		 * @return
+		 *            Value to initialize the timerData
+		 * @return Returns a timerData with exclusiveMin initialize
 		 */
 		InvocationSequenceData generateSequence(int id, double exclusiveMin) {
-			InvocationSequenceData sequenceData = new InvocationSequenceData(new Timestamp(new Date().getTime()), (id * 10), (id * 10), new Long(id));
+			InvocationSequenceData sequenceData = new InvocationSequenceData(DATE, id, id, new Long(id));
 			if (exclusiveMin != -1) {
 				sequenceData.setTimerData(initializeTimerData(exclusiveMin));
 			}
 			return sequenceData;
 		}
 
+		/**
+		 * Initialize mock data to be returned in the proper place
+		 *
+		 * @param duration
+		 *            Duration to be returned
+		 */
+		private void initMock(double duration) {
+			timeWastingOperationsRule.baseline = 1000d;
+			when(globalContext.getDuration()).thenReturn(duration);
+			when(globalContext.getNestedSequences()).thenReturn(populateNestedSequences());
+		}
 
+		private void initContextWithThreeSequences() {
+			when(globalContext.getDuration()).thenReturn(DURATION);
+			List<InvocationSequenceData> nestedSequences = populateNestedSequences();
+			nestedSequences.add(generateSequence(3, RANDOM.nextDouble()));
+			when(globalContext.getNestedSequences()).thenReturn(nestedSequences);
+		}
 
 		/**
 		 * Tests that the action method of the rule is not returning a null group of rules.
 		 */
 		@Test
 		public void actionMethodMustReturnANotNullGroupOfRules() {
-			initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertNotNull(timeWastingOperations, "The returned list of rules must not be null");
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertNotNull(timeWastingOperationsResults, "The returned list of rules must not be null");
 		}
 
 		/**
@@ -151,9 +145,9 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnANotEmptyGroupOfRulesWhenTheDurationIsTooLong() {
-			initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list of rules not empty", timeWastingOperations, not(hasSize(0)));
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list of rules not empty", timeWastingOperationsResults, not(hasSize(0)));
 		}
 
 		/**
@@ -161,10 +155,10 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 * duration is too short.
 		 */
 		@Test
-		public void actionMethodMustReturnAEmptyGroupOfRulesWhenTheDurationIsTooShort() {
-			initializeGlobalContext(new Double(200));
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return an array of rules not empty", timeWastingOperations, not(hasSize(0)));
+		public void actionMethodMustReturnAEmptyGroupOfRulesWhenTheDurationIsZero() {
+			initMock(new Double(0));
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return an array of rules not empty", timeWastingOperationsResults, hasSize(0));
 		}
 
 		/**
@@ -172,9 +166,9 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAGroupOfRulesWithOneElement() {
-			initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list of one rule", timeWastingOperations, hasSize(1));
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list of one rule", timeWastingOperationsResults, hasSize(1));
 		}
 
 		/**
@@ -182,10 +176,9 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAGroupOfRulesWithTwoElements() {
-			initializeGlobalContext();
-			timeWastingOperationsRule.globalContext.getNestedSequences().add(generateSequence(3, RANDOM.nextDouble()));
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list with two rules", timeWastingOperations, hasSize(2));
+			initContextWithThreeSequences();
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list with two rules", timeWastingOperationsResults, hasSize(2));
 		}
 
 		/**
@@ -193,50 +186,45 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAValidGroupOfRules() {
-			initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
+			initMock(DURATION);
+			List<AggregatedInvocationSequenceData> timeWastingOperations = timeWastingOperationsRule.action();
 			assertThat("Action method must return a list of rules not empty", timeWastingOperations, not(hasSize(0)));
 			for (AggregatedInvocationSequenceData aggregatedInvocationSequenceData : timeWastingOperations) {
 				isAValidRule(aggregatedInvocationSequenceData);
 			}
 		}
+
+		/**
+		 * Tests that checks that the results are the expected.
+		 */
+		@Test
+		public void actionMethodMustReturnTheExpectedRules() {
+			initContextWithThreeSequences();
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertEquals(timeWastingOperationsResults.get(0).getMethodIdent(), 1, "Identifier is not the expected one, the first result must have 1 as method identifier");
+			assertEquals(timeWastingOperationsResults.get(1).getMethodIdent(), 3, "Identifier is not the expected one, the first result must have 3 as method identifier");
+		}
 	}
 
-	public static class ActionSqlStatementData extends TimeWastingOperationsRuleTest {
+	public class ActionSqlStatementData extends TimeWastingOperationsRuleTest {
 
 		/**
-		 * Initialize global context with the proper data
+		 * Populates the nested sequences.
 		 *
-		 * @return An instance of invocation data
+		 * @return A list of invocation data which contains the nested sequences
 		 */
-		InvocationSequenceData initializeGlobalContext(double duration) {
-			InvocationSequenceData invocationData = initializeGlobalContext();
-			invocationData.setDuration(duration);
-
-			return invocationData;
+		private List<InvocationSequenceData> populateNestedSequences() {
+			List<InvocationSequenceData> nestedSequences = new ArrayList<>();
+			nestedSequences.add(generateSequence(1, RANDOM.nextDouble()));
+			nestedSequences.add(generateSequence(2, -1));
+			return nestedSequences;
 		}
 
 		/**
-		 * Initializes the globalContext with Sql Statement Data
+		 * Initializes the timer data. With the exclusiveMin initialized.
 		 *
-		 * @return The invocation data which contains the global context
+		 * @return The initialized timer data.
 		 */
-		InvocationSequenceData initializeGlobalContext() {
-			InvocationSequenceData invocationData = new InvocationSequenceData();
-			invocationData.setMethodIdent(1L);
-			invocationData.setDuration(RANDOM.nextDouble() + 1000);
-
-			initializeNestedSequences(invocationData);
-
-			return invocationData;
-		}
-
-		/**
-		 * Initialize the Sql Statement Data. With the exclusiveMin initialized.
-		 *
-		 * @return The initialized SqlStatementData.
-		 */
-		@SuppressWarnings("PMD")
 		SqlStatementData initializeSqlStatementData(double exclusiveMin) {
 			Class<?> sqlStatementDataClass = null;
 			SqlStatementData sqlStatementData = new SqlStatementData();
@@ -256,25 +244,17 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		}
 
 		/**
-		 * Initialize the nested sequences.
-		 *
-		 * @return A list of invocation data which contains the nested sequences
-		 */
-		void initializeNestedSequences(InvocationSequenceData invocationData) {
-			invocationData.getNestedSequences().add(generateSequenceWithSqlStatementData(1, RANDOM.nextDouble()));
-			invocationData.getNestedSequences().add(generateSequenceWithSqlStatementData(2, -1));
-		}
-
-		/**
-		 * Generates a sequence with SQL Statement Data. And initializing it if necessary.
+		 * Generates a sequence with sqlStatementData and timer data. And initializing it if
+		 * necessary.
 		 *
 		 * @param id
 		 *            If of the sequence in order to give different sequences
 		 * @param exclusiveMin
-		 * @return
+		 *            Value to initialize the SqlStatementData
+		 * @return Returns an invocation sequence with the sqlStatmentData initializes
 		 */
-		InvocationSequenceData generateSequenceWithSqlStatementData(int id, double exclusiveMin) {
-			InvocationSequenceData sequenceData = new InvocationSequenceData(new Timestamp(new Date().getTime()), (id * 10), (id * 10), new Long(id));
+		InvocationSequenceData generateSequence(int id, double exclusiveMin) {
+			InvocationSequenceData sequenceData = new InvocationSequenceData(DATE, id, id, new Long(id));
 			if (exclusiveMin != -1) {
 				sequenceData.setSqlStatementData(initializeSqlStatementData(exclusiveMin));
 			}
@@ -282,30 +262,52 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		}
 
 		/**
+		 * Initialize mock data to be returned in the proper place
+		 *
+		 * @param duration
+		 *            Duration to be returned
+		 */
+		private void initMock(double duration) {
+			timeWastingOperationsRule.baseline = 1000d;
+			when(globalContext.getDuration()).thenReturn(duration);
+			when(globalContext.getNestedSequences()).thenReturn(populateNestedSequences());
+		}
+
+		private void initContextWithThreeSequences() {
+			when(globalContext.getDuration()).thenReturn(DURATION);
+			List<InvocationSequenceData> nestedSequences = populateNestedSequences();
+			nestedSequences.add(generateSequence(3, RANDOM.nextDouble()));
+			when(globalContext.getNestedSequences()).thenReturn(nestedSequences);
+		}
+
+		/**
 		 * Tests that the action method of the rule is not returning a null group of rules.
 		 */
 		@Test
 		public void actionMethodMustReturnANotNullGroupOfRules() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertNotNull(timeWastingOperations, "The returned list of rules must not be null");
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertNotNull(timeWastingOperationsResults, "The returned list of rules must not be null");
 		}
 
 		/**
 		 * Tests that the action method of the rule is not returning an empty group of rules.
 		 */
 		@Test
-		public void actionMethodMustReturnANotEmptyGroupOfRulesWhenTheDurationIsTooHigh() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list of rules not empty", timeWastingOperations, not(hasSize(0)));
+		public void actionMethodMustReturnANotEmptyGroupOfRulesWhenTheDurationIsTooLong() {
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list of rules not empty", timeWastingOperationsResults, not(hasSize(0)));
 		}
 
+		/**
+		 * Tests that when the duration is zero the result list must be empty.
+		 */
 		@Test
-		public void actionMethodMustReturnAEmptyGroupOfRulesWhenTheDurationIsTooLow() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext(new Double(200));
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return an array of rules not empty", timeWastingOperations, not(hasSize(0)));
+		public void actionMethodMustReturnAEmptyGroupOfRulesWhenTheDurationIsZero() {
+			initMock(new Double(0));
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return an array of rules not empty", timeWastingOperationsResults, hasSize(0));
 		}
 
 		/**
@@ -313,9 +315,9 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAGroupOfRulesWithOneElement() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list of one rule", timeWastingOperations, hasSize(1));
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list of one rule", timeWastingOperationsResults, hasSize(1));
 		}
 
 		/**
@@ -323,10 +325,9 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAGroupOfRulesWithTwoElements() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext();
-			timeWastingOperationsRule.globalContext.getNestedSequences().add(generateSequenceWithSqlStatementData(3, RANDOM.nextDouble()));
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list with two rules", timeWastingOperations, hasSize(2));
+			initContextWithThreeSequences();
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list with two rules", timeWastingOperationsResults, hasSize(2));
 		}
 
 		/**
@@ -334,12 +335,23 @@ public class TimeWastingOperationsRuleTest extends TestBase {
 		 */
 		@Test
 		public void actionMethodMustReturnAValidGroupOfRules() {
-			timeWastingOperationsRule.globalContext = initializeGlobalContext();
-			timeWastingOperations = timeWastingOperationsRule.action();
-			assertThat("Action method must return a list of rules not empty", timeWastingOperations, not(hasSize(0)));
-			for (AggregatedInvocationSequenceData aggregatedInvocationSequenceData : timeWastingOperations) {
+			initMock(DURATION);
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertThat("Action method must return a list of rules not empty", timeWastingOperationsResults, not(hasSize(0)));
+			for (AggregatedInvocationSequenceData aggregatedInvocationSequenceData : timeWastingOperationsResults) {
 				isAValidRule(aggregatedInvocationSequenceData);
 			}
+		}
+
+		/**
+		 * Tests that checks that the results are the expected.
+		 */
+		@Test
+		public void actionMethodMustReturnTheExpectedRules() {
+			initContextWithThreeSequences();
+			timeWastingOperationsResults = timeWastingOperationsRule.action();
+			assertEquals(timeWastingOperationsResults.get(0).getMethodIdent(), 1, "Identifier is not the expected one, the first result must have 1 as method identifier");
+			assertEquals(timeWastingOperationsResults.get(1).getMethodIdent(), 3, "Identifier is not the expected one, the first result must have 3 as method identifier");
 		}
 	}
 

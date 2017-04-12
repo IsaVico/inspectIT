@@ -2,17 +2,19 @@ package rocks.inspectit.server.diagnosis.service.rules.impl;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import rocks.inspectit.shared.all.communication.data.AggregatedInvocationSequenceData;
@@ -25,27 +27,20 @@ public class ProblemCauseRuleTest extends TestBase {
 	@InjectMocks
 	ProblemCauseRule problemCauseRule;
 
-	@Mock(name = "problemContext")
-	InvocationSequenceData problemContext;
-
-	@Mock(name = "timeWastingOperation")
+	@Mock
 	AggregatedInvocationSequenceData timeWastingOperation;
+
+	@Mock
+	InvocationSequenceData problemContext;
 
 	AggregatedInvocationSequenceData rootCause;
 
-	@BeforeTest
-	private void init() {
-		if (problemCauseRule == null) {
-			problemCauseRule = new ProblemCauseRule();
-		}
-	}
-
 	private static final Random RANDOM = new Random();
+	private static final Timestamp DEF_DATE = new Timestamp(new Date().getTime());
+	private static final long METHOD_IDENT_EQUAL = 108L;
+	private static final long METHOD_IDENT_DIFF = 2L;
 
-	private static final long METHOD_IDENT_EQUAL = new Long(108);
-	private static final long METHOD_IDENT_DIFF = new Long(2);
-
-	public static class ActionTimerData extends ProblemCauseRuleTest {
+	public class ActionMethod extends ProblemCauseRuleTest {
 
 		/**
 		 * Initializes the data of the class
@@ -59,9 +54,7 @@ public class ProblemCauseRuleTest extends TestBase {
 		 */
 		private void init(boolean hastTimerData, long methodIdent) {
 			initializeProblemContext(hastTimerData);
-
-			problemCauseRule.timeWastingOperation = new AggregatedInvocationSequenceData();
-			problemCauseRule.timeWastingOperation.setMethodIdent(methodIdent);
+			when(timeWastingOperation.getMethodIdent()).thenReturn(methodIdent);
 		}
 
 		/**
@@ -73,7 +66,7 @@ public class ProblemCauseRuleTest extends TestBase {
 		void initializeProblemContext(boolean hasTimerData) {
 			initDefaultProblemContext();
 			if (hasTimerData) {
-				initializeNestedSequencesWithTimerData();
+				populateNestedSequencesWithTimerData();
 			} else {
 				initializeNestedSequencesWithoutTimerData();
 			}
@@ -83,9 +76,8 @@ public class ProblemCauseRuleTest extends TestBase {
 		 * Initializes the default data of the problem context.
 		 */
 		void initDefaultProblemContext() {
-			problemCauseRule.problemContext = new InvocationSequenceData();
-			problemCauseRule.problemContext.setMethodIdent(1L);
-			problemCauseRule.problemContext.setDuration(RANDOM.nextDouble() + 1000);
+			when(problemContext.getMethodIdent()).thenReturn(1L);
+			when(problemContext.getDuration()).thenReturn(RANDOM.nextDouble() + 1000);
 		}
 
 		/**
@@ -93,9 +85,31 @@ public class ProblemCauseRuleTest extends TestBase {
 		 *
 		 * @return A list of invocation data which contains the nested sequences
 		 */
-		void initializeNestedSequencesWithTimerData() {
-			problemCauseRule.problemContext.getNestedSequences().add(generateSequenceWithTimerData(1, RANDOM.nextDouble(), METHOD_IDENT_EQUAL));
-			problemCauseRule.problemContext.getNestedSequences().add(generateSequenceWithTimerData(2, -1, METHOD_IDENT_DIFF));
+		void populateNestedSequencesWithTimerData() {
+			List<InvocationSequenceData> nestedSequences = generateTwoSequences();
+			when(problemContext.getNestedSequences()).thenReturn(nestedSequences);
+		}
+
+		/**
+		 * Populates the problemContext with three sequences
+		 */
+		private void populateProblemContextWithThreeSequences() {
+			List<InvocationSequenceData> nestedSequences = generateTwoSequences();
+			nestedSequences.add(generateSequenceWithTimerData(3, RANDOM.nextDouble(), METHOD_IDENT_EQUAL));
+			when(problemContext.getNestedSequences()).thenReturn(nestedSequences);
+		}
+
+		/**
+		 * Creates two fixed sequences.
+		 * 
+		 * @return Returns a list with the sequences.
+		 */
+		private List<InvocationSequenceData> generateTwoSequences() {
+			List<InvocationSequenceData> nestedSequences = new ArrayList<InvocationSequenceData>();
+			nestedSequences.add(generateSequenceWithTimerData(1, RANDOM.nextDouble(), METHOD_IDENT_EQUAL));
+			nestedSequences.add(generateSequenceWithTimerData(2, -1, METHOD_IDENT_DIFF));
+
+			return nestedSequences;
 		}
 
 		/**
@@ -111,7 +125,7 @@ public class ProblemCauseRuleTest extends TestBase {
 		 * @return Returns the created instance of an invocation sequence data.
 		 */
 		InvocationSequenceData generateSequenceWithTimerData(int id, double exclusiveMin, long methodIdent) {
-			InvocationSequenceData sequenceData = new InvocationSequenceData(new Timestamp(new Date().getTime()), (id * 10), (id * 10), methodIdent);
+			InvocationSequenceData sequenceData = new InvocationSequenceData(DEF_DATE, (id * 10), (id * 10), methodIdent);
 			if (exclusiveMin != -1) {
 				sequenceData.setTimerData(initializeTimerData(exclusiveMin));
 			}
@@ -141,7 +155,6 @@ public class ProblemCauseRuleTest extends TestBase {
 			return timerData;
 		}
 
-
 		/**
 		 * Sets the field of the timer data with the value indicated.
 		 *
@@ -170,10 +183,11 @@ public class ProblemCauseRuleTest extends TestBase {
 		 * Initializes the nested sequences of the problem context without timer data.
 		 */
 		void initializeNestedSequencesWithoutTimerData() {
-			problemCauseRule.problemContext.getNestedSequences().add(new InvocationSequenceData(new Timestamp(new Date().getTime()), 10, 10, METHOD_IDENT_EQUAL));
-			problemCauseRule.problemContext.getNestedSequences().add(new InvocationSequenceData(new Timestamp(new Date().getTime()), 20, 20, METHOD_IDENT_DIFF));
+			List<InvocationSequenceData> nestedSequences = new ArrayList<InvocationSequenceData>();
+			nestedSequences.add(new InvocationSequenceData(DEF_DATE, 10, 10, METHOD_IDENT_EQUAL));
+			nestedSequences.add(new InvocationSequenceData(DEF_DATE, 20, 20, METHOD_IDENT_DIFF));
+			when(problemContext.getNestedSequences()).thenReturn(nestedSequences);
 		}
-
 
 
 		@Test
@@ -214,7 +228,7 @@ public class ProblemCauseRuleTest extends TestBase {
 		@Test
 		public void actionMethodMustReturnACauseRuleWithTwoElementsInRawInvocationSequence() {
 			init(true, METHOD_IDENT_EQUAL);
-			problemCauseRule.problemContext.getNestedSequences().add(generateSequenceWithTimerData(3, RANDOM.nextDouble(), METHOD_IDENT_EQUAL));
+			populateProblemContextWithThreeSequences();
 			rootCause = problemCauseRule.action();
 			assertThat("Raw invocation sequence must have two elements", rootCause.getRawInvocationsSequenceElements(), hasSize(2));
 		}
