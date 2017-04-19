@@ -42,7 +42,7 @@ import rocks.inspectit.shared.cs.cmr.property.update.impl.StringPropertyUpdate;
 @SuppressWarnings("PMD")
 public class PropertiesXmlTransformationTest {
 
-	private File f = new File("test.xml");;
+	private File f = new File("test.xml");
 
 	@Test
 	public void marshalConfiguration() throws JAXBException {
