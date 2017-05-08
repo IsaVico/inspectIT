@@ -25,7 +25,7 @@ public class TimeWastingOperationsRule {
 	private static final Double RT_RALATION_THRESHOLD = 0.8;
 
 	@SessionVariable(name = RuleConstants.VAR_BASELINE, optional = false)
-	double baseline;
+	private double baseline;
 
 	@TagValue(type = RuleConstants.TAG_GLOBAL_CONTEXT)
 	private InvocationSequenceData globalContext;

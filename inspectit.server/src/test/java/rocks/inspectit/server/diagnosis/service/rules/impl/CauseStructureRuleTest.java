@@ -1,8 +1,9 @@
 package rocks.inspectit.server.diagnosis.service.rules.impl;
 
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -12,14 +13,13 @@ import java.util.Random;
 
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import rocks.inspectit.server.diagnosis.service.results.ProblemOccurrence.CauseStructure;
 import rocks.inspectit.server.diagnosis.service.results.ProblemOccurrence.CauseType;
 import rocks.inspectit.shared.all.communication.data.AggregatedInvocationSequenceData;
 import rocks.inspectit.shared.all.communication.data.InvocationSequenceData;
+import rocks.inspectit.shared.all.communication.data.SqlStatementData;
 import rocks.inspectit.shared.all.communication.data.TimerData;
 import rocks.inspectit.shared.all.testbase.TestBase;
 
@@ -34,100 +34,120 @@ public class CauseStructureRuleTest extends TestBase {
 	@Mock
 	AggregatedInvocationSequenceData cause;
 
-	CauseStructure causeStructure;
+	public static class Action extends CauseStructureRuleTest {
 
-	private static final Random RANDOM = new Random();
+		private static final Random RANDOM = new Random();
+		private static final Timestamp DEF_DATE = new Timestamp(new Date().getTime());
+		private static final long METHOD_IDENT_EQUAL = new Long(108);
+		private static final long METHOD_IDENT_DIFF = RANDOM.nextLong();
+		private static final Timestamp CURRENT_TIME = new Timestamp(System.currentTimeMillis());
+		private static final TimerData TIMER_DATA = new TimerData(CURRENT_TIME, 10L, 20L, 30L);
+		private static final long PLATFORM_IDENT = RANDOM.nextLong();
+		private static final long SENSOR_TYPE_IDENT = RANDOM.nextLong();
 
-	private static final long METHOD_IDENT_EQUAL = new Long(108);
-	private static final long METHOD_IDENT_DIFF = RANDOM.nextLong();
-
-	public class ActionMethod extends CauseStructureRuleTest {
-		List<InvocationSequenceData> rawInvocations = new ArrayList<>();
-
-		@BeforeMethod
-		private void init() {
+		@Test
+		public void timerDataMustReturnAnInstanceOfSingleCauseTypeIfTheCauseHasJustOneElement() {
+			List<InvocationSequenceData> rawInvocations = new ArrayList<>();
 			rawInvocations.add(new InvocationSequenceData());
 			when(cause.getRawInvocationsSequenceElements()).thenReturn(rawInvocations);
 			when(cause.getMethodIdent()).thenReturn(METHOD_IDENT_EQUAL);
-		}
-
-		@AfterMethod
-		private void clear() {
-			rawInvocations.clear();
-		}
-
-		/**
-		 * Populates the problem context with the identifiers and method identifiers indicated.
-		 *
-		 * @param idSeq1
-		 *            Id for the first sequence
-		 * @param methodIdentSeq1
-		 *            Id for the method in first sequence
-		 * @param idSeq2
-		 *            Id for the second sequence
-		 * @param methodIdentSeq2
-		 *            Id for the method in second sequence
-		 * @param idSeq3
-		 *            Id for the third sequence
-		 * @param methodIdentSeq3
-		 *            Id for the method in third sequence
-		 */
-		private void populateProblemContext(int idSeq1, long methodIdentSeq1, int idSeq2, long methodIdentSeq2, int idSeq3, long methodIdentSeq3) {
-			rawInvocations.add(generateSequence(2, METHOD_IDENT_DIFF));
-			when(cause.getRawInvocationsSequenceElements()).thenReturn(rawInvocations);
-
-			problemContext = generateSequence(idSeq1, methodIdentSeq1);
-			InvocationSequenceData parentSequence = generateSequence(idSeq2, methodIdentSeq2);
-			parentSequence.setParentSequence(generateSequence(idSeq3, methodIdentSeq3));
-			problemContext.setParentSequence(parentSequence);
-		}
-
-		/**
-		 * Generates a new invocation sequence with the identifier and method identifier indicated.
-		 *
-		 * @param id
-		 *            Id for the sequence
-		 * @param methodIdent
-		 *            Id for the method
-		 * @return Returns a new instance of an invocation sequence.
-		 */
-		private InvocationSequenceData generateSequence(int id, long methodIdent) {
-			InvocationSequenceData invocationSequence = new InvocationSequenceData(new Timestamp(new Date().getTime()), (id * 10), (id * 10), methodIdent);
-			invocationSequence.setTimerData(new TimerData(new Timestamp(System.currentTimeMillis()), 10L, 20L, 30L));
-			return invocationSequence;
-		}
-
-		@Test
-		public void actionMethodMustReturnAnInstanceOfSingleCauseTypeIfTheCauseHasJustOneElement() {
 			when(cause.size()).thenReturn(1);
-			causeStructure = causeStructureRule.action();
-			assertEquals(causeStructure.getCauseType(), CauseType.SINGLE);
+
+			CauseStructure causeStructure = causeStructureRule.action();
+
+			assertThat("The returned cause type must be single", causeStructure.getCauseType(), is(CauseType.SINGLE));
 		}
 
 		@Test
-		public void actionMethodMustReturnAnInstanceOfRecursiveCauseTypeIfTheCauseHasMoreThanOneSequenceWithTheSameMethodIdent() {
-			when(cause.size()).thenReturn(3);
-			InvocationSequenceData problemContextParent = generateSequence(2, METHOD_IDENT_DIFF);
-			problemContextParent.setParentSequence(generateSequence(3, METHOD_IDENT_EQUAL));
-			when(problemContext.getParentSequence()).thenReturn(problemContextParent);
-			when(problemContext.getMethodIdent()).thenReturn(METHOD_IDENT_EQUAL);
-			when(problemContext.getTimerData()).thenReturn(new TimerData(new Timestamp(System.currentTimeMillis()), 10L, 20L, 30L));
-			causeStructure = causeStructureRule.action();
-			assertEquals(causeStructure.getCauseType(), CauseType.RECURSIVE);
+		public void timerDataMustReturnAnInstanceOfRecursiveCauseTypeIfTheCauseHasMoreThanOneSequenceWithTheSameMethodIdent() {
+			InvocationSequenceData detectedProblemContext = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 4L);
+			detectedProblemContext.setTimerData(TIMER_DATA);
+			InvocationSequenceData firstMethod = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 7L);
+			firstMethod.setTimerData(TIMER_DATA);
+			InvocationSequenceData secondMethod = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 7L);
+			secondMethod.setTimerData(TIMER_DATA);
+			detectedProblemContext.getNestedSequences().add(firstMethod);
+			firstMethod.setParentSequence(detectedProblemContext);
+			firstMethod.getNestedSequences().add(secondMethod);
+			secondMethod.setParentSequence(firstMethod);
+			when(cause.getRawInvocationsSequenceElements()).thenReturn(detectedProblemContext.getNestedSequences());
+			when(cause.getMethodIdent()).thenReturn(detectedProblemContext.getNestedSequences().get(0).getMethodIdent());
+			when(cause.size()).thenReturn(2);
+			when(problemContext.getParentSequence()).thenReturn(detectedProblemContext.getParentSequence());
+			when(problemContext.getMethodIdent()).thenReturn(detectedProblemContext.getMethodIdent());
+			when(problemContext.getTimerData()).thenReturn(detectedProblemContext.getTimerData());
+			when(problemContext.getNestedSequences()).thenReturn(detectedProblemContext.getNestedSequences());
+			when(problemContext.getDuration()).thenReturn(detectedProblemContext.getDuration());
+
+			CauseStructure causeStructure = causeStructureRule.action();
+
+			assertThat("The returned cause type must be recursive", causeStructure.getCauseType(), is(CauseType.RECURSIVE));
 		}
 
 		@Test
-		public void actionMethodMustReturnAnInstanceOfIterativeCauseTypeIfTheCauseHasNotMoreThanOneSequenceWithTheSameMethodIdent() {
-			populateProblemContext(1, METHOD_IDENT_DIFF, 2, METHOD_IDENT_DIFF, 3, METHOD_IDENT_DIFF);
-			causeStructure = causeStructureRule.action();
-			assertEquals(causeStructure.getCauseType(), CauseType.ITERATIVE);
+		public void timerDataMustReturnAnInstanceOfIterativeCauseTypeIfTheCauseHasNotMoreThanOneSequenceWithTheSameMethodIdent() {
+			InvocationSequenceData childSequence = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, METHOD_IDENT_DIFF);
+			childSequence.setTimerData(TIMER_DATA);
+			InvocationSequenceData parentSequence = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, METHOD_IDENT_DIFF);
+			parentSequence.setTimerData(TIMER_DATA);
+			InvocationSequenceData grandParentSequence = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, METHOD_IDENT_DIFF);
+			grandParentSequence.setTimerData(TIMER_DATA);
+			parentSequence.setParentSequence(grandParentSequence);
+			List<InvocationSequenceData> rawInvocations = new ArrayList<>();
+			rawInvocations.add(new InvocationSequenceData());
+			rawInvocations.add(childSequence);
+			when(problemContext.getParentSequence()).thenReturn(parentSequence);
+			when(problemContext.getTimerData()).thenReturn(TIMER_DATA);
+			when(cause.getRawInvocationsSequenceElements()).thenReturn(rawInvocations);
+			when(cause.getMethodIdent()).thenReturn(METHOD_IDENT_EQUAL);
+
+			CauseStructure causeStructure = causeStructureRule.action();
+
+			assertThat("The returned cause type must be iterative", causeStructure.getCauseType(), is(CauseType.ITERATIVE));
 		}
 
 		@Test
-		public void actionMethodMustReturnAnInstanceOfIterativeCauseTypeIfTheCauseHasNoElements() {
+		public void timerDataMustReturnAnInstanceOfIterativeCauseTypeIfTheCauseHasNoElements() {
+			when(cause.getMethodIdent()).thenReturn(METHOD_IDENT_EQUAL);
 			when(cause.size()).thenReturn(0);
-			causeStructure = causeStructureRule.action();
-			assertEquals(causeStructure.getCauseType(), CauseType.ITERATIVE);
+
+			CauseStructure causeStructure = causeStructureRule.action();
+
+			assertThat("The returned cause type must be iterative", causeStructure.getCauseType(), is(CauseType.ITERATIVE));
+		}
+
+		@Test
+		public void sqlStatementDataMustReturnAnInstanceOfRecursiveCauseTypeIfTheCauseHasMoreThanOneSequenceWithTheSameMethodIdent() {
+			InvocationSequenceData detectedProblemContext = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 4L);
+			detectedProblemContext.setTimerData(TIMER_DATA);
+			SqlStatementData sqlDataStatement = new SqlStatementData(CURRENT_TIME, 10L, 20L, 30L);
+			sqlDataStatement.setCount(1);
+			sqlDataStatement.setSql("somethingsomething");
+			detectedProblemContext.setSqlStatementData(sqlDataStatement);
+			InvocationSequenceData firstMethod = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 7L);
+			firstMethod.setTimerData(TIMER_DATA);
+			firstMethod.setSqlStatementData(sqlDataStatement);
+			InvocationSequenceData secondMethod = new InvocationSequenceData(DEF_DATE, PLATFORM_IDENT, SENSOR_TYPE_IDENT, 7L);
+			secondMethod.setTimerData(TIMER_DATA);
+			secondMethod.setSqlStatementData(sqlDataStatement);
+			detectedProblemContext.getNestedSequences().add(firstMethod);
+			firstMethod.setParentSequence(detectedProblemContext);
+			firstMethod.getNestedSequences().add(secondMethod);
+			secondMethod.setParentSequence(firstMethod);
+			when(cause.getRawInvocationsSequenceElements()).thenReturn(detectedProblemContext.getNestedSequences());
+			when(cause.getMethodIdent()).thenReturn(detectedProblemContext.getNestedSequences().get(0).getMethodIdent());
+			when(cause.size()).thenReturn(2);
+			when(cause.getSqlStatementData()).thenReturn(detectedProblemContext.getSqlStatementData());
+			when(problemContext.getParentSequence()).thenReturn(detectedProblemContext.getParentSequence());
+			when(problemContext.getMethodIdent()).thenReturn(detectedProblemContext.getMethodIdent());
+			when(problemContext.getTimerData()).thenReturn(detectedProblemContext.getTimerData());
+			when(problemContext.getNestedSequences()).thenReturn(detectedProblemContext.getNestedSequences());
+			when(problemContext.getDuration()).thenReturn(detectedProblemContext.getDuration());
+			when(problemContext.getSqlStatementData()).thenReturn(detectedProblemContext.getSqlStatementData());
+
+			CauseStructure causeStructure = causeStructureRule.action();
+
+			assertThat("The returned cause type must be recursive", causeStructure.getCauseType(), is(CauseType.RECURSIVE));
 		}
 	}
 }

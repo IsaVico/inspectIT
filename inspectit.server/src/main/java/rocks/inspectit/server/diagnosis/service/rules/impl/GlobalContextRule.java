@@ -24,7 +24,7 @@ public class GlobalContextRule {
 	private InvocationSequenceData invocationSequenceRoot;
 
 	@SessionVariable(name = RuleConstants.VAR_BASELINE, optional = false)
-	double baseline;
+	private double baseline;
 
 	@Action(resultTag = RuleConstants.TAG_GLOBAL_CONTEXT)
 	public InvocationSequenceData action() {
