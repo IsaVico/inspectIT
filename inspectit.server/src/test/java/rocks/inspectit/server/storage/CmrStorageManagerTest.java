@@ -37,16 +37,20 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import rocks.inspectit.server.cache.IBuffer;
+import rocks.inspectit.server.dao.ProblemOccurrenceDao;
 import rocks.inspectit.server.dao.StorageDataDao;
+import rocks.inspectit.server.diagnosis.results.DiagnosisResults;
 import rocks.inspectit.server.test.AbstractTestNGLogSupport;
 import rocks.inspectit.shared.all.communication.DefaultData;
 import rocks.inspectit.shared.all.exception.BusinessException;
+import rocks.inspectit.shared.all.instrumentation.classcache.util.ArraySet;
 import rocks.inspectit.shared.all.serializer.SerializationException;
 import rocks.inspectit.shared.all.serializer.impl.SerializationManager;
 import rocks.inspectit.shared.all.serializer.provider.SerializationManagerProvider;
 import rocks.inspectit.shared.all.version.VersionService;
 import rocks.inspectit.shared.cs.cmr.service.IServerStatusService;
 import rocks.inspectit.shared.cs.communication.data.cmr.WritingStatus;
+import rocks.inspectit.shared.cs.communication.data.diagnosis.ProblemOccurrence;
 import rocks.inspectit.shared.cs.storage.StorageData;
 import rocks.inspectit.shared.cs.storage.StorageManager;
 import rocks.inspectit.shared.cs.storage.processor.AbstractDataProcessor;
@@ -98,6 +102,12 @@ public class CmrStorageManagerTest extends AbstractTestNGLogSupport {
 
 	private StorageData storageData;
 
+	@Mock
+	private ProblemOccurrenceDao problemOccurrenceDao;
+
+	@Mock
+	private DiagnosisResults diagnosisResults;
+
 	/**
 	 * Init method.
 	 *
@@ -116,9 +126,12 @@ public class CmrStorageManagerTest extends AbstractTestNGLogSupport {
 		storageManager.serverStatusService = serverStatusService;
 		storageManager.log = LoggerFactory.getLogger(CmrStorageManager.class);
 		storageManager.versionService = versionService;
+		storageManager.problemOccurrenceDao = problemOccurrenceDao;
 		when(storageWriterProvider.getCmrStorageWriter()).thenReturn(storageWriter);
 		when(serializationManagerProvider.createSerializer()).thenReturn(serializer);
 		when(versionService.getVersionAsString()).thenReturn(CMR_VERSION);
+		Set<ProblemOccurrence> problemOccurrences = new ArraySet<>();
+		when(diagnosisResults.getDiagnosisResults()).thenReturn(problemOccurrences);
 
 		Field field = StorageManager.class.getDeclaredField("log");
 		field.setAccessible(true);

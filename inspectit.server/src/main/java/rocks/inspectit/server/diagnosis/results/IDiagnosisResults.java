@@ -16,4 +16,8 @@ public interface IDiagnosisResults<R> {
 	 */
 	Collection<R> getDiagnosisResults();
 
+	/**
+	 * Clear the results in the buffer of diagnosis results
+	 */
+	void clear();
 }

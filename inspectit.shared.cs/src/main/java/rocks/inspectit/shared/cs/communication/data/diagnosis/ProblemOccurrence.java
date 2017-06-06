@@ -10,7 +10,9 @@ import rocks.inspectit.shared.all.communication.data.InvocationSequenceData;
  * @author Alexander Wert, Christian Voegele
  *
  */
+
 public class ProblemOccurrence {
+
 
 	/**
 	 * InvocationIdentifier to the request root.
@@ -287,5 +289,4 @@ public class ProblemOccurrence {
 		}
 		return true;
 	}
-
 }

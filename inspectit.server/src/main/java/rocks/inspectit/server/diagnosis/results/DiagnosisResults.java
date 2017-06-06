@@ -36,4 +36,8 @@ public class DiagnosisResults implements IDiagnosisResults<ProblemOccurrence> {
 		return this.resultingSet;
 	}
 
+	@Override
+	public void clear() {
+		resultingSet.clear();
+	}
 }
