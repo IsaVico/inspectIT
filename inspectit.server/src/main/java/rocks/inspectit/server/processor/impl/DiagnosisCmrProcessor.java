@@ -3,13 +3,16 @@
  */
 package rocks.inspectit.server.processor.impl;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import rocks.inspectit.server.dao.ProblemOccurrenceDao;
 import rocks.inspectit.server.diagnosis.results.DiagnosisResults;
 import rocks.inspectit.server.diagnosis.service.IDiagnosisResultNotificationService;
 import rocks.inspectit.server.diagnosis.service.IDiagnosisService;
@@ -49,6 +52,12 @@ public class DiagnosisCmrProcessor extends AbstractCmrDataProcessor implements I
 	 * Baseline value.
 	 */
 	private final double baseline;
+
+	/**
+	 * {@link ProblemOccurrenceDao} to store the diagnosis results in the database.
+	 */
+	@Autowired
+	ProblemOccurrenceDao problemOccurrenceDao;
 
 	/**
 	 * Basic constructor.
@@ -123,4 +132,16 @@ public class DiagnosisCmrProcessor extends AbstractCmrDataProcessor implements I
 		System.out.println("+ " + problemOccurrence.getCauseStructure().getCauseType());
 	}
 
+	/**
+	 * Store the diagnosis results in the database.
+	 *
+	 * @throws IOException
+	 *             Throws an IOException in case the data cannot be stored.
+	 */
+	private void storeDiagnosisResults() throws IOException {
+		Set<ProblemOccurrence> problemOccurrences = diagnosisResults.getDiagnosisResults();
+		if (!problemOccurrences.isEmpty()) {
+			problemOccurrenceDao.saveOrUpdateAll(problemOccurrences);
+		}
+	}
 }

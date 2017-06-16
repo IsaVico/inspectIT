@@ -38,10 +38,8 @@ import org.springframework.stereotype.Component;
 import com.esotericsoftware.kryo.io.Input;
 
 import rocks.inspectit.server.cache.IBuffer;
-import rocks.inspectit.server.dao.ProblemOccurrenceDao;
 import rocks.inspectit.server.dao.StorageDataDao;
 import rocks.inspectit.server.dao.impl.DefaultDataDaoImpl;
-import rocks.inspectit.server.diagnosis.results.DiagnosisResults;
 import rocks.inspectit.shared.all.communication.DefaultData;
 import rocks.inspectit.shared.all.exception.BusinessException;
 import rocks.inspectit.shared.all.exception.enumeration.StorageErrorCodeEnum;
@@ -51,7 +49,6 @@ import rocks.inspectit.shared.all.spring.logger.Log;
 import rocks.inspectit.shared.all.version.VersionService;
 import rocks.inspectit.shared.cs.cmr.service.IServerStatusService;
 import rocks.inspectit.shared.cs.communication.data.cmr.WritingStatus;
-import rocks.inspectit.shared.cs.communication.data.diagnosis.ProblemOccurrence;
 import rocks.inspectit.shared.cs.storage.IStorageData;
 import rocks.inspectit.shared.cs.storage.StorageData;
 import rocks.inspectit.shared.cs.storage.StorageData.StorageState;
@@ -137,18 +134,6 @@ public class CmrStorageManager extends StorageManager implements ApplicationList
 	 */
 	@Autowired
 	VersionService versionService;
-
-	/**
-	 * {@link DiagnosisResults} Diagnosis results.
-	 */
-	@Autowired
-	DiagnosisResults diagnosisResults;
-
-	/**
-	 * {@link ProblemOccurrenceDao} to store the diagnosis results in the database.
-	 */
-	@Autowired
-	ProblemOccurrenceDao problemOccurrenceDao;
 
 	/**
 	 * Stores the current cmr version read from the versionService.
@@ -345,8 +330,6 @@ public class CmrStorageManager extends StorageManager implements ApplicationList
 				writeStorageDataToDisk(recorderStorageData);
 			}
 		}
-		// copy if we have any problemOccurrence to store
-		storeDiagnosisResults();
 	}
 
 	/**
@@ -431,10 +414,6 @@ public class CmrStorageManager extends StorageManager implements ApplicationList
 			log.error("Writer for the not closed storage " + local + " is not available.");
 			throw new RuntimeException("Writer for the not closed storage " + local + " is not available.");
 		}
-
-		// copy if we have any problemOccurrence to store
-		storeDiagnosisResults();
-
 	}
 
 	/**
@@ -1264,16 +1243,4 @@ public class CmrStorageManager extends StorageManager implements ApplicationList
 		return toStringBuilder.toString();
 	}
 
-	/**
-	 * Store the diagnosis results in the database.
-	 *
-	 * @throws IOException
-	 *             Throws an IOException in case the data cannot be stored.
-	 */
-	private void storeDiagnosisResults() throws IOException {
-		Set<ProblemOccurrence> problemOccurrences = diagnosisResults.getDiagnosisResults();
-		if (!problemOccurrences.isEmpty()) {
-			problemOccurrenceDao.saveOrUpdateAll(problemOccurrences);
-		}
-	}
 }
