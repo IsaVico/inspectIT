@@ -19,7 +19,7 @@ public class HttpClientBuilderSensor extends AbstractMethodSensor implements IMe
 	/**
 	 * Hook to use.
 	 */
-	ISpecialHook hook;
+	private ISpecialHook hook;
 
 	/**
 	 * {@link IRuntimeLinker} used to build the hook for the builder.

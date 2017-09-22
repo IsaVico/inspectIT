@@ -32,7 +32,7 @@ public class FutureCallbackProxyTest extends TestBase {
 
 	@BeforeMethod
 	public void init() {
-		proxy = new FutureCallbackProxy(spanStore);
+		proxy = new FutureCallbackProxy(spanStore, null);
 	}
 
 	public static class GetProxyConstructorArguments extends FutureCallbackProxyTest {

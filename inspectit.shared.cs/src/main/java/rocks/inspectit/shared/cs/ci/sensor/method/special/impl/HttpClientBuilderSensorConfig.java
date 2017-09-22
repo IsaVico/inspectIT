@@ -4,6 +4,9 @@ import rocks.inspectit.shared.all.instrumentation.config.impl.SubstitutionDescri
 import rocks.inspectit.shared.cs.ci.sensor.method.special.AbstractSpecialMethodSensorConfig;
 
 /**
+ * Configuration for the
+ * {@link rocks.inspectit.agent.java.sensor.method.special.HttpClientBuilderSensor}.
+ *
  * @author Isabel Vico Peinado
  *
  */
@@ -51,6 +54,6 @@ public final class HttpClientBuilderSensorConfig extends AbstractSpecialMethodSe
 	 */
 	@Override
 	public SubstitutionDescriptor getSubstitutionDescriptor() {
-		return new SubstitutionDescriptor(true, true);
+		return new SubstitutionDescriptor(false, false);
 	}
 }

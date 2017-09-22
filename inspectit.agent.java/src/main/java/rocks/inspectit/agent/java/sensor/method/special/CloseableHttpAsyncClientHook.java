@@ -3,6 +3,7 @@ package rocks.inspectit.agent.java.sensor.method.special;
 import rocks.inspectit.agent.java.config.impl.SpecialSensorConfig;
 import rocks.inspectit.agent.java.hooking.ISpecialHook;
 import rocks.inspectit.agent.java.proxy.IRuntimeLinker;
+import rocks.inspectit.agent.java.tracing.core.adapter.SpanStoreAdapter;
 import rocks.inspectit.agent.java.tracing.core.adapter.http.proxy.FutureCallbackProxy;
 import rocks.inspectit.agent.java.tracing.core.async.SpanStore;
 import rocks.inspectit.agent.java.util.ReflectionCache;
@@ -42,10 +43,12 @@ public class CloseableHttpAsyncClientHook implements ISpecialHook {
 	public Object beforeBody(long methodId, Object object, Object[] parameters, SpecialSensorConfig ssc) {
 		if ((null != parameters) && (parameters.length == 4)) {
 			Object context = parameters[2];
-			SpanStore spanStore = (SpanStore) CACHE.invokeMethod(context.getClass(), "getAttribute", new Class<?>[] { String.class }, context, new Object[] { "spanStore" }, null);
-			FutureCallbackProxy proxy = new FutureCallbackProxy(spanStore);
-			Object newProxy = runtimeLinker.createProxy(FutureCallbackProxy.class, proxy, object.getClass().getClassLoader());
-			parameters[3] = newProxy;
+			Object store = CACHE.invokeMethod(context.getClass(), "getAttribute", new Class<?>[] { String.class }, context, new Object[] { SpanStoreAdapter.Constants.ID }, null);
+			if (store instanceof SpanStore) {
+				FutureCallbackProxy proxy = new FutureCallbackProxy((SpanStore) store, parameters[3]);
+				Object newProxy = runtimeLinker.createProxy(FutureCallbackProxy.class, proxy, object.getClass().getClassLoader());
+				parameters[3] = newProxy;
+			}
 		}
 		return null;
 	}

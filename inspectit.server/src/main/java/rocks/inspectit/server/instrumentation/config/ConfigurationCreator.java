@@ -121,9 +121,7 @@ public class ConfigurationCreator {
 
 		specialMethodSensorTypeConfigs.add(getMethodSensorTypeConfig(platformId, ExecutorIntercepterSensorConfig.INSTANCE));
 
-
 		specialMethodSensorTypeConfigs.add(getMethodSensorTypeConfig(platformId, HttpClientBuilderSensorConfig.INSTANCE));
-
 		specialMethodSensorTypeConfigs.add(getMethodSensorTypeConfig(platformId, CloseableHttpAsyncClientSensorConfig.INSTANCE));
 
 		agentConfiguration.setSpecialMethodSensorTypeConfigs(specialMethodSensorTypeConfigs);

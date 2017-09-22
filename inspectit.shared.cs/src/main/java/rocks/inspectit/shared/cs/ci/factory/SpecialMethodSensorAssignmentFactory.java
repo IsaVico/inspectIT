@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import javax.annotation.PostConstruct;
 import javax.xml.bind.annotation.XmlTransient;
@@ -89,7 +90,6 @@ public class SpecialMethodSensorAssignmentFactory {
 		}
 
 		assignments.addAll(executorInterceptorAssignments);
-
 		assignments.addAll(httpClientBuilderAssignments);
 		assignments.addAll(closeableHttpAsyncClientAssignments);
 
@@ -172,14 +172,15 @@ public class SpecialMethodSensorAssignmentFactory {
 		SpecialMethodSensorAssignment httpClientBuilderAddInterceptorInstr = new SpecialMethodSensorAssignment(HttpClientBuilderSensorConfig.INSTANCE);
 		httpClientBuilderAddInterceptorInstr.setClassName("org.apache.http.impl.nio.client.HttpAsyncClientBuilder");
 		httpClientBuilderAddInterceptorInstr.setMethodName("build");
+		httpClientBuilderAddInterceptorInstr.setParameters(new ArrayList<String>());
 
 		httpClientBuilderAssignments = Arrays.asList(httpClientBuilderAddInterceptorInstr);
 
 		SpecialMethodSensorAssignment closeableHttpAsyncClientInstr = new SpecialMethodSensorAssignment(CloseableHttpAsyncClientSensorConfig.INSTANCE);
 		closeableHttpAsyncClientInstr.setClassName("org.apache.http.impl.nio.client.CloseableHttpAsyncClient");
 		closeableHttpAsyncClientInstr.setMethodName("execute");
-		closeableHttpAsyncClientInstr
-		.setParameters(Arrays.asList("org.apache.http.HttpHost", "org.apache.http.HttpRequest", "org.apache.http.protocol.HttpContext", "org.apache.http.concurrent.FutureCallback"));
+		List<String> parameters = Arrays.asList("org.apache.http.HttpHost", "org.apache.http.HttpRequest", "org.apache.http.protocol.HttpContext", "org.apache.http.concurrent.FutureCallback");
+		closeableHttpAsyncClientInstr.setParameters(parameters);
 
 		closeableHttpAsyncClientAssignments = Arrays.asList(closeableHttpAsyncClientInstr);
 	}

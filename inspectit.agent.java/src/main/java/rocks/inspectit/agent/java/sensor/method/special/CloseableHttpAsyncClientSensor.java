@@ -11,6 +11,8 @@ import rocks.inspectit.agent.java.sensor.method.AbstractMethodSensor;
 import rocks.inspectit.agent.java.sensor.method.IMethodSensor;
 
 /**
+ * Closeable Http Async Client sensor.
+ *
  * @author Isabel Vico Peinado
  *
  */
@@ -19,7 +21,7 @@ public class CloseableHttpAsyncClientSensor extends AbstractMethodSensor impleme
 	/**
 	 * Hook to use.
 	 */
-	ISpecialHook hook;
+	private ISpecialHook hook;
 
 	/**
 	 * {@link IRuntimeLinked} used to build the hook for the closeable.

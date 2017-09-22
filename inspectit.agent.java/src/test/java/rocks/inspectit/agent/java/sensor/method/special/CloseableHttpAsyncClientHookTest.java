@@ -22,6 +22,7 @@ import org.testng.annotations.Test;
 
 import rocks.inspectit.agent.java.config.impl.SpecialSensorConfig;
 import rocks.inspectit.agent.java.proxy.IRuntimeLinker;
+import rocks.inspectit.agent.java.tracing.core.adapter.SpanStoreAdapter;
 import rocks.inspectit.agent.java.tracing.core.adapter.http.proxy.FutureCallbackProxy;
 import rocks.inspectit.agent.java.tracing.core.async.SpanStore;
 import rocks.inspectit.shared.all.testbase.TestBase;
@@ -78,7 +79,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, null), object.getClass().getClassLoader());
 		}
 
 		@Test
@@ -87,7 +88,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, null), object.getClass().getClassLoader());
 		}
 
 		@Test
@@ -97,7 +98,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
 			assertThat("Third parameter (proxy) must not be set.", parameters[3], is(nullValue()));
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, parameters[3]), object.getClass().getClassLoader());
 		}
 
 		@Test
@@ -106,7 +107,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, null), object.getClass().getClassLoader());
 		}
 
 		@Test
@@ -115,7 +116,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, parameters[3]), object.getClass().getClassLoader());
 		}
 
 		@Test
@@ -125,7 +126,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 			Object[] parameters = new Object[] { new Object(), new Object(), httpContext, new Object() };
 			when(runtimeLinker.createProxy(eq(FutureCallbackProxy.class), Mockito.<FutureCallbackProxy> any(), Mockito.<ClassLoader> any())).thenReturn(futureCallback);
 			runtimeLinker.createProxy(eq(FutureCallbackProxy.class), Mockito.<FutureCallbackProxy> any(), Mockito.<ClassLoader> any());
-			when(httpContext.getAttribute("spanStore")).thenReturn(spanStore);
+			when(httpContext.getAttribute(SpanStoreAdapter.Constants.ID)).thenReturn(spanStore);
 			ArgumentCaptor<FutureCallbackProxy> proxyCaptor = ArgumentCaptor.forClass(FutureCallbackProxy.class);
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
@@ -140,7 +141,7 @@ public class CloseableHttpAsyncClientHookTest extends TestBase {
 
 			hook.beforeBody(METHOD_ID, object, parameters, ssc);
 
-			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null), object.getClass().getClassLoader());
+			verify(runtimeLinker, times(0)).createProxy(FutureCallbackProxy.class, new FutureCallbackProxy(null, parameters[3]), object.getClass().getClassLoader());
 		}
 
 		interface FutureCallback {

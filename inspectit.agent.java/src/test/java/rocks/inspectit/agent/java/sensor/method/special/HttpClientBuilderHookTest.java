@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -93,18 +92,6 @@ public class HttpClientBuilderHookTest extends TestBase {
 			verify(cache, times(1)).invokeMethod((Class<?>) Mockito.<Object> any(), Mockito.<String> any(), new Class<?>[] { (Class<?>) Mockito.<Object> any() }, Mockito.<Object> any(),
 					new Object[] { Mockito.<Object> any() },
 					Mockito.<Object> any());
-		}
-
-		@Test
-		public void mustThrowAnExceptionWhenGetClassThrowsIt() throws ClassNotFoundException {
-			Object[] parameters = new Object[] {};
-			when(runtimeLinker.createProxy(eq(HttpRequestInterceptorProxy.class), Mockito.<HttpRequestInterceptorProxy> any(), Mockito.<ClassLoader> any())).thenReturn(newInterceptor);
-			hook = spy(hook);
-			doThrow(new ClassNotFoundException()).when(hook).getClass(object);
-
-			hook.beforeBody(METHOD_ID, object, parameters, ssc);
-
-			verify(log, times(1)).error(Mockito.anyString(), Mockito.<ClassNotFoundException> any());
 		}
 
 		@Test
