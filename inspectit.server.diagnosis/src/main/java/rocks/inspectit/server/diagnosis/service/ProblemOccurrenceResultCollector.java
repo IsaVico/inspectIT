@@ -11,10 +11,12 @@ import rocks.inspectit.server.diagnosis.engine.session.SessionContext;
 import rocks.inspectit.server.diagnosis.engine.tag.Tag;
 import rocks.inspectit.server.diagnosis.engine.tag.TagState;
 import rocks.inspectit.server.diagnosis.service.aggregation.AggregatedDiagnosisData;
+import rocks.inspectit.server.diagnosis.service.aggregation.DiagnosisDataAggregator;
 import rocks.inspectit.server.diagnosis.service.data.CauseCluster;
 import rocks.inspectit.server.diagnosis.service.rules.RuleConstants;
 import rocks.inspectit.shared.all.communication.data.InvocationSequenceData;
 import rocks.inspectit.shared.cs.communication.data.diagnosis.CauseStructure;
+import rocks.inspectit.shared.cs.communication.data.diagnosis.CauseStructure.SourceType;
 import rocks.inspectit.shared.cs.communication.data.diagnosis.ProblemOccurrence;
 import rocks.inspectit.shared.cs.communication.data.diagnosis.RootCause;
 
@@ -114,6 +116,11 @@ public class ProblemOccurrenceResultCollector implements ISessionResultCollector
 	 */
 	private AggregatedDiagnosisData getRootCauseInvocations(Tag leafTag) {
 		while (null != leafTag) {
+			if (leafTag.getType().equals(RuleConstants.DIAGNOSIS_TAG_PROBLEM_CONTEXT) && leafTag.getState().equals(TagState.LEAF)) {
+				CauseCluster problemContext = (CauseCluster) leafTag.getValue();
+				InvocationSequenceData id = problemContext.getCauseInvocations().get(0);
+				return new AggregatedDiagnosisData(SourceType.INVOCATION, id, DiagnosisDataAggregator.getInstance().getAggregationKey(id));
+			}
 			if (leafTag.getType().equals(RuleConstants.DIAGNOSIS_TAG_PROBLEM_CAUSE)) {
 				if (leafTag.getValue() instanceof AggregatedDiagnosisData) {
 					return (AggregatedDiagnosisData) leafTag.getValue();
